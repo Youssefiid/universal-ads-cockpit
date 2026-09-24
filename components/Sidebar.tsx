@@ -10,21 +10,24 @@ import {
   Cpu,
   Users,
   Compass,
-  Database,
-  ExternalLink,
-  Sliders
+  UserCog,
+  Plug,
+  ShieldCheck
 } from "lucide-react";
 
-export function Sidebar() {
+export function Sidebar({ role }: { role: "admin" | "member" }) {
   const pathname = usePathname();
 
   const navItems = [
     { label: "Cockpit Overview", href: "/", icon: LayoutDashboard },
     { label: "Looker Studio Live", href: "/looker", icon: Layers },
-    { label: "Comptes Clients", href: "/clients/acme-ecom", icon: Users },
+    { label: "Comptes Clients", href: "/clients", icon: Users },
+    ...(role === "admin" ? [{ label: "Connecteurs", href: "/connecteurs", icon: Plug }] : []),
     { label: "Hub Supermetrics", href: "/supermetrics", icon: Share2 },
     { label: "Outils MCP Agent", href: "/mcp", icon: Cpu },
     { label: "Didacticiel Pas-à-Pas", href: "/onboarding", icon: Compass },
+    { label: "Profil", href: "/profil", icon: UserCog },
+    ...(role === "admin" ? [{ label: "Équipe", href: "/equipe", icon: ShieldCheck }] : []),
   ];
 
   return (

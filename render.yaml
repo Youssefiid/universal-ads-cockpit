@@ -1,0 +1,50 @@
+databases:
+  - name: universal-ads-cockpit-db
+    plan: free
+    databaseName: universal_ads_cockpit
+    user: universal_ads_cockpit
+
+services:
+  - type: web
+    name: universal-ads-cockpit
+    runtime: node
+    plan: free
+    # Migration + pose du rôle applicatif (app_rw, moins privilégié que le
+    # propriétaire) + amorçage du tout premier compte admin, dans cet ordre :
+    # le rôle doit exister avant que l'appli tourne dessous, et l'admin avant
+    # que quiconque puisse se connecter. Rejouable sans risque à chaque
+    # déploiement (voir scripts/bootstrap-admin.ts).
+    buildCommand: npm ci && npx prisma generate && npx prisma migrate deploy && npm run db:security && npx tsx scripts/bootstrap-admin.ts && npm run build
+    # scripts/start.sh dérive APP_DATABASE_URL de DATABASE_URL avant de
+    # lancer le serveur — même raison qu'ads-dashboard : sans lui,
+    # l'application tournerait sous le rôle propriétaire de la base.
+    startCommand: bash scripts/start.sh
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: universal-ads-cockpit-db
+          property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true
+      # Mot de passe du rôle applicatif (app_rw), créé au déploiement par
+      # scripts/apply-security.ts. Généré une fois par Render, jamais écrit
+      # dans le dépôt.
+      - key: APP_DB_PASSWORD
+        generateValue: true
+      # Jeton pour les appels serveur à serveur sans session (flux Looker
+      # Studio, agents MCP externes) — voir lib/connectorAuth.ts. N'a rien à
+      # voir avec les clés de fournisseurs (Supermetrics, Anthropic...), qui
+      # se posent depuis l'application elle-même (/connecteurs, /profil),
+      # jamais ici.
+      - key: CONNECTOR_API_KEY
+        generateValue: true
+      # Premier compte admin, amorcé une seule fois par
+      # scripts/bootstrap-admin.ts — voir ce fichier. Le mot de passe est
+      # généré par Render, jamais choisi ni vu par un tiers ; consultez-le
+      # dans l'onglet Environment de ce service après le premier déploiement.
+      - key: INITIAL_ADMIN_EMAIL
+        value: marketing@inovad.net
+      - key: INITIAL_ADMIN_PASSWORD
+        generateValue: true
+      - key: NODE_ENV
+        value: production

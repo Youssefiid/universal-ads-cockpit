@@ -2,9 +2,10 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Sparkles, RefreshCw, Layers, ShieldCheck, ExternalLink, Activity } from "lucide-react";
+import { Sparkles, RefreshCw, Layers, LogOut } from "lucide-react";
 import { SupermetricsSyncModal } from "./SupermetricsSyncModal";
 import { AiChatDrawer } from "./AiChatDrawer";
+import { logout } from "@/lib/actions";
 
 export function Header() {
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
@@ -87,6 +88,18 @@ export function Header() {
             <Sparkles className="w-4 h-4 text-purple-200" />
             <span>Copilot IA</span>
           </button>
+
+          <form action={logout}>
+            <button
+              type="submit"
+              className="chip"
+              title="Se déconnecter"
+              aria-label="Se déconnecter"
+              style={{ padding: "0.5rem" }}
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          </form>
         </div>
       </header>
 

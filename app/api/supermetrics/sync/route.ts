@@ -1,32 +1,25 @@
 import { NextResponse } from "next/server";
-import { triggerSupermetricsSync, getConnectors } from "@/lib/supermetrics";
-import { Platform } from "@/lib/types";
+import { prismaApp } from "@/lib/prisma";
 
+/**
+ * Statut réel du connecteur Supermetrics — remplace un `POST` qui attendait
+ * un délai artificiel puis tirait un nombre de lignes au hasard, renvoyé
+ * comme une synchronisation réussie. Aucune route de ce cockpit ne
+ * synchronise de données de campagne automatiquement ; celle-ci se contente
+ * de dire si une clé est enregistrée, honnêtement.
+ */
 export async function GET() {
+  const credential = await prismaApp.connectorCredential.findUnique({
+    where: { provider: "supermetrics" },
+    select: { hint: true, checkedAt: true, checkOk: true },
+  });
+
   return NextResponse.json({
-    connectors: getConnectors(),
-    status: "HEALTHY",
-    lastCheck: new Date().toISOString()
+    configured: !!credential,
+    checkOk: credential?.checkOk ?? null,
+    checkedAt: credential?.checkedAt ?? null,
+    note: "Cette route ne déclenche aucune synchronisation : l'import de données se fait par fichier. Utilisez /api/supermetrics/accounts pour découvrir les comptes réels d'une régie.",
   });
 }
 
-export async function POST(request: Request) {
-  try {
-    const body = await request.json().catch(() => ({}));
-    const platform = body.platform as Platform | undefined;
-
-    const results = await triggerSupermetricsSync(platform);
-
-    return NextResponse.json({
-      success: true,
-      timestamp: new Date().toISOString(),
-      results,
-      message: `Synchronisation Supermetrics exécutée avec succès (${results.length} régies mises à jour).`
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { success: false, error: "Supermetrics sync failed", details: String(error) },
-      { status: 500 }
-    );
-  }
-}
+export const dynamic = "force-dynamic";

@@ -1,0 +1,208 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Authentification du personnel de l'agence. Un seul portail (pas de portail
+/// client séparé comme dans ads-dashboard spec 0003), mais deux portées de
+/// visibilité : un admin voit tous les clients, un traffic manager (member)
+/// seulement ceux qui lui sont assignés via ClientAssignment.
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  role          StaffRole @default(member)
+  name          String?
+  createdAt     DateTime  @default(now())
+  deactivatedAt DateTime?
+
+  clientAssignments    ClientAssignment[]
+  connectorCredentials UserConnectorCredential[]
+}
+
+enum StaffRole {
+  admin
+  member
+}
+
+/// Un annonceur suivi par l'agence. L'identifiant est le slug déjà utilisé
+/// par les URL existantes ("acme-ecom") plutôt qu'un cuid : changer l'ID
+/// changerait les adresses, et rien dans la maquette ne le justifie.
+model Client {
+  id            String    @id
+  name          String
+  category      String
+  currency      String    @default("EUR")
+  monthlyBudget Decimal   @db.Decimal(12, 2)
+  createdAt     DateTime  @default(now())
+  archivedAt    DateTime?
+
+  platformAccounts PlatformAccount[]
+  assignments      ClientAssignment[]
+}
+
+/// Portée de visibilité d'un traffic manager (role member). Un admin ignore
+/// cette table (il voit tout) ; un member ne voit que les clients listés ici
+/// pour lui — mêmes principe qu'ads-dashboard spec 0003, en plus simple
+/// (pas de portail client séparé).
+model ClientAssignment {
+  userId    String
+  clientId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  client Client @relation(fields: [clientId], references: [id])
+
+  @@id([userId, clientId])
+}
+
+enum Platform {
+  meta
+  google
+  tiktok
+  linkedin
+}
+
+model PlatformAccount {
+  id                String   @id @default(cuid())
+  clientId          String
+  platform          Platform
+  externalAccountId String
+  displayName       String
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+
+  client   Client     @relation(fields: [clientId], references: [id])
+  metrics  MetricDaily[]
+  campaigns Campaign[]
+
+  @@unique([platform, externalAccountId])
+}
+
+/// Métadonnées d'une campagne : ce qu'aucune régie ne mesure au jour le jour
+/// (son statut, son budget quotidien réglé). Séparé de MetricDaily pour la
+/// même raison qu'ads-dashboard : un statut ne se répète pas par journée,
+/// et le confondre avec une mesure inviterait à le fabriquer si l'import
+/// du jour ne le fournit pas.
+/// Sous-type de diffusion au sein d'une régie : un compte Google Ads mélange
+/// réellement des campagnes Search, Display, YouTube (Video) et Performance
+/// Max sous un seul compte — les distinguer seulement par plateforme
+/// ("google") les confondrait toutes. Valeurs stockées en snake_case, sans
+/// contrainte d'enum Prisma (le jeu de valeurs diffère par régie) ; le
+/// libellé affiché vient de lib/networks.ts. Correspond au champ réel
+/// `campaign_advertising_channel_type` de l'API Google Ads pour "google".
+/// Pour "meta", il n'existe pas d'équivalent aussi stable côté API (le
+/// placement réel est une répartition par annonce, pas un attribut fixe de
+/// campagne) : la valeur reflète le mode de diffusion déclaré de la
+/// campagne (ex. Advantage+ = diffusion automatique Facebook + Instagram),
+/// pas une mesure de répartition réelle du budget par plateforme.
+model Campaign {
+  platformAccountId String
+  externalEntityId  String
+  name              String
+  status            CampaignStatus @default(ACTIVE)
+  budgetDaily       Decimal?       @db.Decimal(10, 2)
+  network           String?
+  updatedAt         DateTime       @updatedAt
+
+  platformAccount PlatformAccount @relation(fields: [platformAccountId], references: [id])
+
+  @@id([platformAccountId, externalEntityId])
+}
+
+enum CampaignStatus {
+  ACTIVE
+  PAUSED
+  LEARNING
+  OPTIMIZING
+}
+
+enum MetricGranularity {
+  jour
+  semaine
+  mois
+  periode
+}
+
+enum MetricLevel {
+  account
+  campaign
+}
+
+/// La seule table de mesures. Reprend telle quelle la règle d'ads-dashboard :
+/// une granularité et un niveau par compte, jamais mélangés dans une même
+/// lecture, et periodEnd qui dit ce qu'une ligne agrégée couvre vraiment —
+/// sans lui, un export mensuel affiché comme un jour a déjà fait perdre neuf
+/// mois de budget à un audit avant d'être corrigé.
+model MetricDaily {
+  platformAccountId String
+  date              DateTime          @db.Date
+  periodEnd         DateTime?         @db.Date
+  granularity       MetricGranularity @default(jour)
+  level             MetricLevel
+  externalEntityId  String            @default("")
+  entityName        String?
+
+  impressions      BigInt
+  clicks            BigInt
+  cost              Decimal @db.Decimal(14, 4)
+  conversions       Decimal @db.Decimal(14, 4)
+  conversionValue   Decimal @default(0) @db.Decimal(14, 4)
+  currency          String  @default("EUR")
+
+  syncedAt DateTime @default(now())
+
+  platformAccount PlatformAccount @relation(fields: [platformAccountId], references: [id])
+
+  @@id([platformAccountId, date, granularity, level, externalEntityId])
+  @@index([platformAccountId, date])
+}
+
+/// Clés de fournisseurs partagées par toute l'agence (Supermetrics pour la
+/// découverte de comptes, Claude/GPT/Gemini pour les fonctions IA). Utilisée
+/// tant qu'un utilisateur n'a pas posé sa propre clé dans
+/// UserConnectorCredential ci-dessous.
+model ConnectorCredential {
+  provider  String   @id
+  secret    String
+  hint      String
+  label     String?
+  createdAt DateTime @default(now())
+  checkedAt DateTime?
+  checkOk   Boolean?
+  checkNote String?
+}
+
+/// Clé personnelle d'un membre du staff pour un fournisseur IA, prioritaire
+/// sur la clé d'agence ci-dessus quand elle existe (lib/actions.ts,
+/// cleConnecteurPour()).
+model UserConnectorCredential {
+  userId    String
+  provider  String
+  secret    String
+  hint      String
+  label     String?
+  createdAt DateTime  @default(now())
+  checkedAt DateTime?
+  checkOk   Boolean?
+  checkNote String?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@id([userId, provider])
+}
+
+/// Journal d'accès : qui a fait quoi, et le frein contre le brute force sur
+/// la connexion (voir lib/actions.ts, login()).
+model AccessLog {
+  id     String   @id @default(cuid())
+  userId String?
+  action String
+  target String?
+  at     DateTime @default(now())
+
+  @@index([action, target, at])
+}

@@ -30,10 +30,10 @@ export default function McpExplorerPage() {
       argsHint: "Optionnel : minSeverity (CRITICAL, WARNING, OPPORTUNITY)"
     },
     {
-      id: "trigger_supermetrics_sync",
-      name: "trigger_supermetrics_sync",
-      desc: "Déclenche une synchronisation asynchrone des flux ad-networks via la passerelle Supermetrics.",
-      argsHint: "Optionnel : platform (meta, google, tiktok, linkedin)"
+      id: "list_supermetrics_accounts",
+      name: "list_supermetrics_accounts",
+      desc: "Liste les comptes réellement visibles avec la clé Supermetrics de l'agence, pour une régie donnée. Ne synchronise aucune donnée.",
+      argsHint: "Requis : platform (meta, google, tiktok, linkedin)"
     },
     {
       id: "generate_client_report",
@@ -50,11 +50,12 @@ export default function McpExplorerPage() {
     try {
       let argsObj = {};
       if (toolArg.trim()) {
-        if (toolArg.includes("=") || !toolArg.startsWith("{")) {
-          // Simple key/value or raw clientId
-          argsObj = { clientId: toolArg.trim() };
-        } else {
+        if (toolArg.startsWith("{")) {
           argsObj = JSON.parse(toolArg);
+        } else if (activeTool === "list_supermetrics_accounts") {
+          argsObj = { platform: toolArg.trim() };
+        } else {
+          argsObj = { clientId: toolArg.trim() };
         }
       }
 
@@ -76,12 +77,16 @@ export default function McpExplorerPage() {
     }
   };
 
+  // Chemin réel du projet, pas celui du brouillon Antigravity où il a été
+  // conçu — une configuration copiée telle quelle aurait pointé vers un
+  // dossier qui n'existe plus dès que le projet est déplacé.
   const mcpConfigJson = JSON.stringify(
     {
       mcpServers: {
         "universal-ads-cockpit": {
-          command: "node",
-          args: ["/Users/youssefidbelkheir/.gemini/antigravity/scratch/universal-ads-cockpit/node_modules/.bin/tsx", "/Users/youssefidbelkheir/.gemini/antigravity/scratch/universal-ads-cockpit/mcp/server.ts"]
+          command: "npx",
+          args: ["tsx", "mcp/server.ts"],
+          cwd: "/Users/youssefidbelkheir/Projects/universal-ads-cockpit",
         }
       }
     },

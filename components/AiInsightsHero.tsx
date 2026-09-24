@@ -49,18 +49,18 @@ export function AiInsightsHero({
             </span>
             <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.72rem", color: "#10b981" }}>
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Garantie zéro hallucination</span>
+              <span>Détecté sur les données mesurées</span>
             </div>
           </div>
 
           <h2 style={{ fontSize: "1.25rem", fontWeight: 800, color: "#ffffff", marginBottom: "0.4rem" }}>
-            {topAnomaly ? topAnomaly.title : "Performance globale saine : ROAS moyen à 4.6x"}
+            {topAnomaly ? topAnomaly.title : "Aucune anomalie détectée sur la période mesurée"}
           </h2>
 
           <p style={{ color: "#cbd5e1", fontSize: "0.88rem", lineHeight: 1.5, maxWidth: "780px" }}>
             {topAnomaly
               ? `${topAnomaly.message} Recommandation : ${topAnomaly.suggestedAction}`
-              : "Les campagnes Meta Ads et Google PMax affichent une dynamique favorable avec un coût par acquisition maîtrisé. 3 régies synchronisées via Supermetrics."}
+              : "Aucune campagne mesurée ne dépasse les seuils de ROAS surveillés (sous 1,5x ou au-dessus de 5x). Le Copilot reste disponible pour toute question sur les chiffres mesurés."}
           </p>
         </div>
 

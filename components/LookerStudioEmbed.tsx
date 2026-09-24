@@ -16,13 +16,23 @@ import {
   Activity,
   ChevronDown
 } from "lucide-react";
-import { mockClients, getCockpitOverview, getCrossChannelBreakdown } from "@/lib/store";
 import { PlatformIcon } from "./PlatformIcon";
+import type { CrossChannelSummary } from "@/lib/types";
 
+/**
+ * `overview` et `channels` viennent maintenant du serveur (app/looker/page.tsx),
+ * calculés sur les métriques réellement mesurées — ce composant appelait
+ * auparavant `getCockpitOverview()`/`getCrossChannelBreakdown()` depuis
+ * lib/store.ts, synchrones, sur des tableaux fixes.
+ */
 export function LookerStudioEmbed({
+  overview,
+  channels,
   reportUrl = "",
   title = "Tableau de Bord Exécutif Looker Studio",
 }: {
+  overview: { totalSpend: number; totalRevenue: number; totalConversions: number; averageRoas: number };
+  channels: CrossChannelSummary[];
   reportUrl?: string;
   title?: string;
 }) {
@@ -33,9 +43,6 @@ export function LookerStudioEmbed({
   const [isEditing, setIsEditing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState<string>("ALL");
-
-  const overview = getCockpitOverview();
-  const channels = getCrossChannelBreakdown();
 
   const endpointUrl = typeof window !== "undefined"
     ? `${window.location.origin}/api/looker/data`

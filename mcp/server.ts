@@ -1,13 +1,17 @@
 import * as readline from "readline";
-import { getCockpitOverview, getCrossChannelBreakdown, mockClients, mockAnomalies, getClientById } from "../lib/store";
-import { triggerSupermetricsSync } from "../lib/supermetrics";
+import "dotenv/config";
+import { prismaApp } from "../lib/prisma";
+import { getCockpitOverview, getCrossChannelBreakdown, getAnomalies, getClientById } from "../lib/queries";
+import { cleSupermetrics, listerComptesSupermetrics, ErreurSupermetrics } from "../lib/supermetrics";
+import type { Platform } from "../lib/types";
 
-// Lightweight Stdio JSON-RPC 2.0 MCP Server
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-  terminal: false
-});
+/**
+ * Serveur MCP stdio, aligné sur app/api/mcp/route.ts — les deux exposaient
+ * auparavant des listes d'outils différentes (4 ici, 5 côté HTTP, dont un
+ * `generate_client_report` que ce fichier n'avait jamais reçu). Les deux
+ * appellent maintenant exactement les mêmes fonctions réelles.
+ */
+const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });
 
 function sendResponse(response: object) {
   process.stdout.write(JSON.stringify(response) + "\n");
@@ -16,42 +20,33 @@ function sendResponse(response: object) {
 const TOOLS = [
   {
     name: "get_cockpit_kpis",
-    description: "Returns aggregated high-level KPIs across all clients and ad platforms (Spend, Revenue, ROAS, Conversions, Health).",
-    inputSchema: {
-      type: "object",
-      properties: {
-        clientId: { type: "string", description: "Optional client ID to filter by." }
-      }
-    }
+    description: "Retourne les KPIs mesurés (dépense, CA, ROAS, conversions, score de santé) sur 30 jours glissants. Optionnellement filtré par client.",
+    inputSchema: { type: "object", properties: { clientId: { type: "string" } } },
   },
   {
     name: "get_cross_channel_metrics",
-    description: "Returns spend, revenue, ROAS, and CPA broken down by advertising platform (Meta, Google, TikTok, LinkedIn).",
-    inputSchema: {
-      type: "object",
-      properties: {}
-    }
+    description: "Retourne la répartition mesurée de la dépense, du CA et du ROAS par régie publicitaire.",
+    inputSchema: { type: "object", properties: {} },
   },
   {
     name: "detect_anomalies",
-    description: "Audits campaigns for budget caps, surging CPAs, declining ROAS, or scaling opportunities.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        minSeverity: { type: "string", enum: ["CRITICAL", "WARNING", "OPPORTUNITY"] }
-      }
-    }
+    description: "Retourne les campagnes dont le ROAS mesuré sort des seuils surveillés. Vide si aucune.",
+    inputSchema: { type: "object", properties: {} },
   },
   {
-    name: "trigger_supermetrics_sync",
-    description: "Triggers real-time ingestion from Supermetrics for one or all ad networks.",
+    name: "list_supermetrics_accounts",
+    description: "Liste les comptes réellement visibles avec la clé Supermetrics de l'agence, pour une régie. Ne synchronise aucune donnée.",
     inputSchema: {
       type: "object",
-      properties: {
-        platform: { type: "string", enum: ["meta", "google", "tiktok", "linkedin"] }
-      }
-    }
-  }
+      properties: { platform: { type: "string", enum: ["meta", "google", "tiktok", "linkedin"] } },
+      required: ["platform"],
+    },
+  },
+  {
+    name: "generate_client_report",
+    description: "Génère un rapport Markdown à partir des métriques mesurées d'un client.",
+    inputSchema: { type: "object", properties: { clientId: { type: "string" } }, required: ["clientId"] },
+  },
 ];
 
 rl.on("line", async (line) => {
@@ -68,21 +63,14 @@ rl.on("line", async (line) => {
         result: {
           protocolVersion: "2024-11-05",
           capabilities: { tools: {} },
-          serverInfo: {
-            name: "universal-ads-cockpit-mcp",
-            version: "1.0.0"
-          }
-        }
+          serverInfo: { name: "universal-ads-cockpit-mcp", version: "2.0.0" },
+        },
       });
       return;
     }
 
     if (method === "tools/list") {
-      sendResponse({
-        jsonrpc: "2.0",
-        id,
-        result: { tools: TOOLS }
-      });
+      sendResponse({ jsonrpc: "2.0", id, result: { tools: TOOLS } });
       return;
     }
 
@@ -93,70 +81,61 @@ rl.on("line", async (line) => {
       switch (toolName) {
         case "get_cockpit_kpis": {
           if (args.clientId) {
-            const client = getClientById(args.clientId);
+            const client = await getClientById(prismaApp, args.clientId);
             sendResponse({
               jsonrpc: "2.0",
               id,
-              result: { content: [{ type: "text", text: JSON.stringify(client || { error: "Not found" }) }] }
+              result: { content: [{ type: "text", text: JSON.stringify(client ?? { error: "Not found" }) }] },
             });
           } else {
-            sendResponse({
-              jsonrpc: "2.0",
-              id,
-              result: { content: [{ type: "text", text: JSON.stringify(getCockpitOverview()) }] }
-            });
+            const overview = await getCockpitOverview(prismaApp);
+            sendResponse({ jsonrpc: "2.0", id, result: { content: [{ type: "text", text: JSON.stringify(overview) }] } });
           }
           break;
         }
-
         case "get_cross_channel_metrics": {
-          sendResponse({
-            jsonrpc: "2.0",
-            id,
-            result: { content: [{ type: "text", text: JSON.stringify(getCrossChannelBreakdown()) }] }
-          });
+          const breakdown = await getCrossChannelBreakdown(prismaApp);
+          sendResponse({ jsonrpc: "2.0", id, result: { content: [{ type: "text", text: JSON.stringify(breakdown) }] } });
           break;
         }
-
         case "detect_anomalies": {
-          sendResponse({
-            jsonrpc: "2.0",
-            id,
-            result: { content: [{ type: "text", text: JSON.stringify(mockAnomalies) }] }
-          });
+          const anomalies = await getAnomalies(prismaApp);
+          sendResponse({ jsonrpc: "2.0", id, result: { content: [{ type: "text", text: JSON.stringify(anomalies) }] } });
           break;
         }
-
-        case "trigger_supermetrics_sync": {
-          const syncResult = await triggerSupermetricsSync(args.platform);
-          sendResponse({
-            jsonrpc: "2.0",
-            id,
-            result: { content: [{ type: "text", text: JSON.stringify(syncResult) }] }
-          });
+        case "list_supermetrics_accounts": {
+          const cle = await cleSupermetrics(prismaApp);
+          if (!cle) {
+            sendResponse({ jsonrpc: "2.0", id, error: { code: -32000, message: "Aucune clé Supermetrics enregistrée." } });
+            break;
+          }
+          try {
+            const comptes = await listerComptesSupermetrics(cle, args.platform as Platform);
+            sendResponse({ jsonrpc: "2.0", id, result: { content: [{ type: "text", text: JSON.stringify(comptes) }] } });
+          } catch (e) {
+            const message = e instanceof ErreurSupermetrics ? e.message : String(e);
+            sendResponse({ jsonrpc: "2.0", id, error: { code: -32001, message } });
+          }
           break;
         }
-
+        case "generate_client_report": {
+          const client = await getClientById(prismaApp, args.clientId);
+          if (!client) {
+            sendResponse({ jsonrpc: "2.0", id, error: { code: -32002, message: `Client '${args.clientId}' introuvable.` } });
+            break;
+          }
+          const md = `# Rapport de Performance · ${client.name}\nROAS ${client.roas}x, dépense ${client.totalSpend} ${client.currency}, ${client.totalConversions} conversions.`;
+          sendResponse({ jsonrpc: "2.0", id, result: { content: [{ type: "text", text: md }] } });
+          break;
+        }
         default:
-          sendResponse({
-            jsonrpc: "2.0",
-            id,
-            error: { code: -32601, message: `Tool ${toolName} not found` }
-          });
+          sendResponse({ jsonrpc: "2.0", id, error: { code: -32601, message: `Tool ${toolName} not found` } });
       }
       return;
     }
 
-    // Default response for notifications or ping
-    sendResponse({
-      jsonrpc: "2.0",
-      id,
-      result: {}
-    });
+    sendResponse({ jsonrpc: "2.0", id, result: {} });
   } catch (err) {
-    sendResponse({
-      jsonrpc: "2.0",
-      error: { code: -32700, message: "Parse error", data: String(err) }
-    });
+    sendResponse({ jsonrpc: "2.0", error: { code: -32700, message: "Parse error", data: String(err) } });
   }
 });

@@ -98,12 +98,13 @@ export default function OnboardingPage() {
                 1. Sélection des régies publicitaires
               </h3>
               <p className="subtle" style={{ fontSize: "0.85rem", marginBottom: "1.2rem" }}>
-                Supermetrics consolide automatiquement ces régies dans votre schéma unifié :
+                Posez une clé Supermetrics depuis le Hub, puis cherchez les comptes réels de
+                chaque régie avant de les rattacher à un client :
               </p>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.8rem" }}>
                 {[
-                  { name: "Meta Ads (FB / IG)", sub: "Graph API v21 connectée", key: "meta" },
-                  { name: "Google Ads (Search, PMax)", sub: "Google Ads API v18", key: "google" },
+                  { name: "Meta Ads (FB / IG)", sub: "Graph API", key: "meta" },
+                  { name: "Google Ads (Search, PMax)", sub: "Google Ads API", key: "google" },
                   { name: "TikTok Ads", sub: "TikTok Marketing API", key: "tiktok" },
                   { name: "LinkedIn Ads", sub: "Campaign Manager API", key: "linkedin" },
                 ].map((item) => (
@@ -124,10 +125,12 @@ export default function OnboardingPage() {
                       <div style={{ fontWeight: 600, fontSize: "0.85rem" }}>{item.name}</div>
                       <div className="subtle" style={{ fontSize: "0.72rem" }}>{item.sub}</div>
                     </div>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981" }} />
                   </div>
                 ))}
               </div>
+              <Link href="/supermetrics" className="btn-secondary" style={{ fontSize: "0.8rem", marginTop: "1rem", display: "inline-flex" }}>
+                Ouvrir le Hub Supermetrics
+              </Link>
             </div>
           )}
 
@@ -160,10 +163,10 @@ export default function OnboardingPage() {
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 {[
-                  "get_cockpit_kpis : Récupération des KPIs financiers et ROAS",
-                  "detect_anomalies : Détection de surges de CPA et de sous-performance",
-                  "trigger_supermetrics_sync : Déclenchement de synchronisations",
-                  "generate_client_report : Génération instantanée de synthèses Markdown"
+                  "get_cockpit_kpis : KPIs mesurés (dépense, CA, ROAS, conversions)",
+                  "detect_anomalies : campagnes dont le ROAS mesuré sort des seuils surveillés",
+                  "list_supermetrics_accounts : comptes réellement visibles pour une régie",
+                  "generate_client_report : synthèse Markdown à partir des métriques mesurées"
                 ].map((tool, idx) => (
                   <div key={idx} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.82rem", color: "#cbd5e1" }}>
                     <span style={{ color: "#818cf8" }}>⚡</span>
@@ -180,10 +183,13 @@ export default function OnboardingPage() {
                 <CheckCircle className="w-8 h-8 text-emerald-400" />
               </div>
               <h3 style={{ fontSize: "1.2rem", fontWeight: 800, marginBottom: "0.4rem" }}>
-                Tout est prêt et opérationnel !
+                Le cockpit est prêt
               </h3>
               <p className="subtle" style={{ fontSize: "0.85rem", maxWidth: "480px", margin: "0 auto 1.4rem" }}>
-                Votre cockpit unique relie désormais Looker Studio, Supermetrics et vos agents IA dans une seule et même brique autonome.
+                Le flux Looker Studio et le serveur MCP fonctionnent dès maintenant sur vos
+                données mesurées. Le Copilot IA demande une clé Anthropic, la découverte de
+                comptes une clé Supermetrics — les deux se posent depuis le Hub Supermetrics
+                et l&apos;écran Profil.
               </p>
               <Link href="/" className="btn-primary" style={{ padding: "0.6rem 1.4rem", fontSize: "0.88rem" }}>
                 Accéder au Cockpit Exécutif

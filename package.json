@@ -1,24 +1,38 @@
 {
   "name": "universal-ads-cockpit",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",
-    "start": "next start -p 3001",
-    "mcp": "tsx mcp/server.ts"
+    "start": "next start -p ${PORT:-3001}",
+    "mcp": "tsx mcp/server.ts",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:security": "tsx scripts/apply-security.ts",
+    "test": "tsx --test tests/*.test.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.127.0",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
     "lucide-react": "^1.47.0",
     "next": "16.3.5",
+    "pg": "^8.23.0",
+    "pptxgenjs": "^4.0.1",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "dotenv": "^18.0.0",
+    "prisma": "^7.10.0",
     "tsx": "^4.23.13",
     "typescript": "^5.0.0"
+  },
+  "overrides": {
+    "image-size": "^2.0.4"
   }
 }

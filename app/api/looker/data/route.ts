@@ -1,12 +1,24 @@
 import { NextResponse } from "next/server";
 import { getLookerStudioData } from "@/lib/lookerConnector";
+import { jetonConnecteurValide } from "@/lib/connectorAuth";
 
+/**
+ * Pas de session de navigateur ici : Looker Studio appelle ce flux serveur
+ * à serveur. À la place, un jeton dédié (CONNECTOR_API_KEY, distinct de la
+ * session du cockpit) est exigé en en-tête Authorization — ce flux sert de
+ * vraies mesures de clients, il ne doit pas être lisible par n'importe qui
+ * connaissant l'URL.
+ */
 export async function GET(request: Request) {
+  if (!jetonConnecteurValide(request)) {
+    return NextResponse.json({ error: "Jeton connecteur manquant ou invalide." }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const clientId = searchParams.get("clientId");
 
-    const data = getLookerStudioData();
+    const data = await getLookerStudioData();
 
     // Optional filter by client ID if provided in query params
     let rows = data.rows;

@@ -1,30 +1,24 @@
-import { mockClients, getCockpitOverview } from "./store";
-import { LookerSchemaField } from "./types";
+import { prismaApp } from "./prisma";
+import { getAllClients, getCockpitOverview } from "./queries";
+import { lookerFields } from "./lookerFields";
 
-export const lookerFields: LookerSchemaField[] = [
-  { name: "date", label: "Date", dataType: "STRING", semantics: { conceptType: "DIMENSION", semanticType: "YEAR_MONTH_DAY" } },
-  { name: "clientId", label: "Client ID", dataType: "STRING", semantics: { conceptType: "DIMENSION" } },
-  { name: "clientName", label: "Client Name", dataType: "STRING", semantics: { conceptType: "DIMENSION" } },
-  { name: "category", label: "Category", dataType: "STRING", semantics: { conceptType: "DIMENSION" } },
-  { name: "platform", label: "Ad Platform", dataType: "STRING", semantics: { conceptType: "DIMENSION" } },
-  { name: "campaignName", label: "Campaign Name", dataType: "STRING", semantics: { conceptType: "DIMENSION" } },
-  { name: "campaignStatus", label: "Status", dataType: "STRING", semantics: { conceptType: "DIMENSION" } },
-  { name: "spend", label: "Spend (€)", dataType: "NUMBER", semantics: { conceptType: "METRIC", semanticType: "CURRENCY_EUR", isDouble: true } },
-  { name: "revenue", label: "Revenue (€)", dataType: "NUMBER", semantics: { conceptType: "METRIC", semanticType: "CURRENCY_EUR", isDouble: true } },
-  { name: "conversions", label: "Conversions", dataType: "NUMBER", semantics: { conceptType: "METRIC" } },
-  { name: "impressions", label: "Impressions", dataType: "NUMBER", semantics: { conceptType: "METRIC" } },
-  { name: "clicks", label: "Clicks", dataType: "NUMBER", semantics: { conceptType: "METRIC" } },
-  { name: "roas", label: "ROAS (x)", dataType: "NUMBER", semantics: { conceptType: "METRIC", isDouble: true } },
-  { name: "cpa", label: "CPA (€)", dataType: "NUMBER", semantics: { conceptType: "METRIC", semanticType: "CURRENCY_EUR", isDouble: true } },
-  { name: "ctr", label: "CTR (%)", dataType: "NUMBER", semantics: { conceptType: "METRIC", semanticType: "PERCENT", isDouble: true } },
-  { name: "cpc", label: "CPC (€)", dataType: "NUMBER", semantics: { conceptType: "METRIC", semanticType: "CURRENCY_EUR", isDouble: true } }
-];
+export { lookerFields };
 
-export function getLookerStudioData() {
+/**
+ * Le flux Looker Studio, sur les mêmes données mesurées que le reste du
+ * cockpit. Auparavant, cette fonction reformatait `mockClients` — quatre
+ * clients fictifs aux chiffres écrits à la main — en un flux JSON typé qui
+ * se présentait comme un connecteur de données réel. Un tableau Looker
+ * Studio branché dessus aurait affiché des chiffres inventés à qui les
+ * présente à un vrai client.
+ */
+export async function getLookerStudioData() {
+  const clients = await getAllClients(prismaApp);
+  const { clients: _omises, ...overview } = await getCockpitOverview(prismaApp, clients);
   const rows: { values: (string | number)[] }[] = [];
   const today = new Date().toISOString().slice(0, 10);
 
-  for (const client of mockClients) {
+  for (const client of clients) {
     for (const campaign of client.campaigns) {
       rows.push({
         values: [
@@ -55,8 +49,8 @@ export function getLookerStudioData() {
     metadata: {
       generatedAt: new Date().toISOString(),
       rowCount: rows.length,
-      overview: getCockpitOverview(),
-      documentation: "Direct Looker Studio Community Connector JSON Feed"
+      overview,
+      documentation: "Looker Studio Community Connector JSON Feed — données mesurées, pas de simulation."
     }
   };
 }

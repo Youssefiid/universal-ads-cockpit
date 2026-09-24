@@ -18,6 +18,7 @@ export interface Campaign {
   id: string;
   name: string;
   platform: Platform;
+  network: string | null;
   status: "ACTIVE" | "PAUSED" | "LEARNING" | "OPTIMIZING";
   budgetDaily: number;
   spend: number;
