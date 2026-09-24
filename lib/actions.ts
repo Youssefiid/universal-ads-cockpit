@@ -74,13 +74,9 @@ export async function envoyerMessageChat(formData: FormData) {
   if (!message) return { texte: "" };
 
   const { getClientVisiblePourPortee, getCockpitOverview, getClientsPourPortee } = await import("./queries");
+  const { resoudreCleAnthropic } = await import("./aiKey");
 
-  // Clé personnelle d'abord (Profil), clé d'agence en repli — même règle
-  // qu'annoncée sur le hub Connecteurs.
-  const clePersonnelle = await prismaApp.userConnectorCredential.findUnique({
-    where: { userId_provider: { userId: session.userId, provider: "anthropic" } },
-  });
-  const cleAgence = clePersonnelle ?? (await prismaApp.connectorCredential.findUnique({ where: { provider: "anthropic" } }));
+  const cleAgence = await resoudreCleAnthropic(session.userId);
   if (!cleAgence) {
     throw new Error(
       "Aucune clé Anthropic n'est enregistrée (ni personnelle, ni d'agence) : le Copilot ne peut pas répondre tant qu'elle n'est pas posée dans Connecteurs ou dans votre Profil.",

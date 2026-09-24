@@ -21,6 +21,7 @@ model User {
 
   clientAssignments    ClientAssignment[]
   connectorCredentials UserConnectorCredential[]
+  importBatches        ImportBatch[]
 }
 
 enum StaffRole {
@@ -42,6 +43,7 @@ model Client {
 
   platformAccounts PlatformAccount[]
   assignments      ClientAssignment[]
+  importBatches    ImportBatch[]
 }
 
 /// Portée de visibilité d'un traffic manager (role member). Un admin ignore
@@ -78,6 +80,7 @@ model PlatformAccount {
   client   Client     @relation(fields: [clientId], references: [id])
   metrics  MetricDaily[]
   campaigns Campaign[]
+  importBatches ImportBatch[]
 
   @@unique([platform, externalAccountId])
 }
@@ -205,4 +208,31 @@ model AccessLog {
   at     DateTime @default(now())
 
   @@index([action, target, at])
+}
+
+/// Traçabilité d'un import CSV/Excel/XML : quel fichier, quel mapping de
+/// colonnes a réellement été appliqué (pas seulement suggéré par l'IA — le
+/// mapping confirmé par l'utilisateur), et sa remarque libre. Sans cette
+/// table, personne ne pourrait vérifier après coup pourquoi une métrique
+/// mesurée vient d'où, ni ce que l'utilisateur avait signalé au moment de
+/// l'import (période partielle, campagne renommée, etc.).
+model ImportBatch {
+  id                String   @id @default(cuid())
+  clientId          String
+  platformAccountId String
+  fileName          String
+  format            String
+  mapping           Json
+  remark            String?
+  rowsImported      Int
+  rowsSkipped       Int
+  skippedSamples    Json?
+  importedByUserId  String
+  importedAt        DateTime @default(now())
+
+  client          Client          @relation(fields: [clientId], references: [id])
+  platformAccount PlatformAccount @relation(fields: [platformAccountId], references: [id])
+  importedBy      User            @relation(fields: [importedByUserId], references: [id])
+
+  @@index([clientId, importedAt])
 }

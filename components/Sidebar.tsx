@@ -12,7 +12,8 @@ import {
   Compass,
   UserCog,
   Plug,
-  ShieldCheck
+  ShieldCheck,
+  UploadCloud
 } from "lucide-react";
 
 export function Sidebar({ role }: { role: "admin" | "member" }) {
@@ -22,6 +23,7 @@ export function Sidebar({ role }: { role: "admin" | "member" }) {
     { label: "Cockpit Overview", href: "/", icon: LayoutDashboard },
     { label: "Looker Studio Live", href: "/looker", icon: Layers },
     { label: "Comptes Clients", href: "/clients", icon: Users },
+    { label: "Importer des données", href: "/import", icon: UploadCloud },
     ...(role === "admin" ? [{ label: "Connecteurs", href: "/connecteurs", icon: Plug }] : []),
     { label: "Hub Supermetrics", href: "/supermetrics", icon: Share2 },
     { label: "Outils MCP Agent", href: "/mcp", icon: Cpu },
