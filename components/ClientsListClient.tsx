@@ -7,7 +7,7 @@ import { PlatformIcon } from "@/components/PlatformIcon";
 import type { Client } from "@/lib/types";
 
 const CATEGORIES_SUGGEREES = ["E-Commerce & Retail", "Beauty & D2C", "SaaS Enterprise", "Services B2B", "Santé", "Immobilier"];
-const DEVISES = ["EUR", "USD", "GBP", "CHF", "CAD"];
+const DEVISES = ["EUR", "USD", "MAD", "GBP", "CHF", "CAD"];
 
 /**
  * Liste de tous les clients visibles pour la session en cours (tous pour un
@@ -23,8 +23,8 @@ export function ClientsListClient({
   createAction: (formData: FormData) => Promise<void>;
 }) {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const money = (v: number) =>
-    new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(v);
+  const money = (v: number, devise: string) =>
+    new Intl.NumberFormat("fr-FR", { style: "currency", currency: devise, maximumFractionDigits: 0 }).format(v);
 
   return (
     <div>
@@ -77,7 +77,7 @@ export function ClientsListClient({
                 <div style={{ marginBottom: "1.1rem" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", marginBottom: "0.35rem" }}>
                     <span className="subtle">Budget mensuel engagé</span>
-                    <strong>{money(client.totalSpend)} / {money(client.monthlyBudget)} ({spendPercent}%)</strong>
+                    <strong>{money(client.totalSpend, client.currency)} / {money(client.monthlyBudget, client.currency)} ({spendPercent}%)</strong>
                   </div>
                   <div style={{ height: "6px", background: "rgba(255, 255, 255, 0.08)", borderRadius: "3px", overflow: "hidden" }}>
                     <div

@@ -12,7 +12,7 @@ export function LookerPageClient({
   overview,
   channels,
 }: {
-  overview: { totalSpend: number; totalRevenue: number; totalConversions: number; averageRoas: number };
+  overview: { totalSpend: number; totalRevenue: number; totalConversions: number; averageRoas: number; currency: string };
   channels: CrossChannelSummary[];
 }) {
   const [copied, setCopied] = useState(false);

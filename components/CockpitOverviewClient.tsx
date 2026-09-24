@@ -39,6 +39,8 @@ export function CockpitOverviewClient({
     averageRoas: number;
     averageHealth: number;
     activeCampaignsCount: number;
+    currency: string;
+    clientsNonConvertis: { id: string; name: string; currency: string }[];
     clients: Client[];
   };
   crossChannel: CrossChannelSummary[];
@@ -48,8 +50,15 @@ export function CockpitOverviewClient({
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const clients = overview.clients;
 
+  // Les cumuls multi-clients sont convertis dans la devise de reporting de
+  // l'agence (overview.currency, MAD) côté serveur — voir
+  // lib/queries.ts:getCockpitOverview. Chaque carte client garde en revanche
+  // sa propre devise de facturation : moneyClient() ci-dessous, jamais celle
+  // de l'agence.
   const money = (v: number) =>
-    new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(v);
+    new Intl.NumberFormat("fr-FR", { style: "currency", currency: overview.currency, maximumFractionDigits: 0 }).format(v);
+  const moneyClient = (v: number, devise: string) =>
+    new Intl.NumberFormat("fr-FR", { style: "currency", currency: devise, maximumFractionDigits: 0 }).format(v);
 
   return (
     <div>
@@ -80,6 +89,25 @@ export function CockpitOverviewClient({
           </Link>
         </div>
       </div>
+
+      {overview.clientsNonConvertis.length > 0 && (
+        <div
+          style={{
+            background: "rgba(245, 158, 11, 0.1)",
+            border: "1px solid rgba(245, 158, 11, 0.3)",
+            borderRadius: "10px",
+            padding: "0.75rem 1rem",
+            marginBottom: "1.2rem",
+            fontSize: "0.8rem",
+            color: "#fcd34d",
+          }}
+        >
+          Cumuls ci-dessous exprimés en {overview.currency}, hors{" "}
+          {overview.clientsNonConvertis.map((c) => `${c.name} (${c.currency})`).join(", ")} : aucun taux de change
+          n&apos;est encore réglé pour {overview.clientsNonConvertis.length > 1 ? "ces devises" : "cette devise"} —{" "}
+          <a href="/devises" style={{ color: "#fcd34d", textDecoration: "underline" }}>réglez-le dans Devises</a>.
+        </div>
+      )}
 
       {/* AI Insight Hero */}
       <AiInsightsHero
@@ -181,7 +209,7 @@ export function CockpitOverviewClient({
                   <div style={{ marginBottom: "1.1rem" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", marginBottom: "0.35rem" }}>
                       <span className="subtle">Budget mensuel engagé</span>
-                      <strong>{money(client.totalSpend)} / {money(client.monthlyBudget)} ({spendPercent}%)</strong>
+                      <strong>{moneyClient(client.totalSpend, client.currency)} / {moneyClient(client.monthlyBudget, client.currency)} ({spendPercent}%)</strong>
                     </div>
                     <div style={{ height: "6px", background: "rgba(255, 255, 255, 0.08)", borderRadius: "3px", overflow: "hidden" }}>
                       <div
@@ -209,7 +237,7 @@ export function CockpitOverviewClient({
                     </div>
                     <div>
                       <span className="subtle" style={{ fontSize: "0.7rem", display: "block" }}>CA Tracké</span>
-                      <strong style={{ color: "white", fontSize: "0.95rem" }}>{money(client.totalRevenue)}</strong>
+                      <strong style={{ color: "white", fontSize: "0.95rem" }}>{moneyClient(client.totalRevenue, client.currency)}</strong>
                     </div>
                   </div>
                 </div>

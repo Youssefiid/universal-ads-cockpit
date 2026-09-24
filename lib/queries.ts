@@ -356,10 +356,35 @@ export async function getClientVisiblePourPortee(db: Db, id: string, portee: Por
   return getClientById(db, id);
 }
 
+/**
+ * Additionner des dépenses de clients facturés dans des devises différentes
+ * sans conversion produirait un total qui n'est la somme de rien de réel
+ * (10 000 $ + 10 000 € n'est pas 20 000 d'une devise qui existe) — chaque
+ * client est donc converti dans la devise de reporting de l'agence (MAD)
+ * avant d'être cumulé. Un client dont la devise n'a pas de taux configuré
+ * est exclu du total plutôt que deviné à 1:1, et listé dans
+ * `clientsNonConvertis` pour que l'écran le signale.
+ */
 export async function getCockpitOverview(db: Db, dejaCalcules?: Client[]) {
   const clients = dejaCalcules ?? (await getAllClients(db));
-  const totalSpend = clients.reduce((a, c) => a + c.totalSpend, 0);
-  const totalRevenue = clients.reduce((a, c) => a + c.totalRevenue, 0);
+  const { chargerTaux, convertirVersMad, DEVISE_AGENCE } = await import("./currency");
+  const taux = await chargerTaux(db);
+
+  let totalSpend = 0;
+  let totalRevenue = 0;
+  const clientsNonConvertis: { id: string; name: string; currency: string }[] = [];
+
+  for (const c of clients) {
+    const spendMad = convertirVersMad(c.totalSpend, c.currency, taux);
+    const revenueMad = convertirVersMad(c.totalRevenue, c.currency, taux);
+    if (spendMad === null || revenueMad === null) {
+      clientsNonConvertis.push({ id: c.id, name: c.name, currency: c.currency });
+      continue;
+    }
+    totalSpend += spendMad;
+    totalRevenue += revenueMad;
+  }
+
   const totalConversions = clients.reduce((a, c) => a + c.totalConversions, 0);
   const averageRoas = ratio(totalRevenue, totalSpend);
   const averageHealth = clients.length
@@ -374,7 +399,8 @@ export async function getCockpitOverview(db: Db, dejaCalcules?: Client[]) {
     averageHealth,
     clientsCount: clients.length,
     activeCampaignsCount: clients.reduce((a, c) => a + c.campaigns.length, 0),
-    currency: "EUR",
+    currency: DEVISE_AGENCE,
+    clientsNonConvertis,
     clients,
   };
 }

@@ -170,6 +170,16 @@ async function main() {
     ],
   });
 
+  // Taux de départ, réglables ensuite par un admin depuis /devises — jamais
+  // réécrits ici une fois posés (update: {} sur les clés déjà présentes).
+  for (const [currency, rateToMad] of [["USD", 10.5], ["EUR", 11.5]] as const) {
+    await prisma.exchangeRate.upsert({
+      where: { currency },
+      update: {},
+      create: { currency, rateToMad },
+    });
+  }
+
   console.log("Amorçage terminé : 3 clients, admin@agence.test /", MOT_DE_PASSE_DEV);
 }
 

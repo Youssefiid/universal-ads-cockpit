@@ -99,9 +99,12 @@ export async function envoyerMessageChat(formData: FormData) {
   } else {
     const clients = await getClientsPourPortee(prismaApp, session);
     const overview = await getCockpitOverview(prismaApp, clients);
+    const exclusion = overview.clientsNonConvertis.length
+      ? ` (hors ${overview.clientsNonConvertis.map((c) => c.name).join(", ")}, devise non convertie en ${overview.currency})`
+      : "";
     contexte = {
-      portee: session.role === "admin" ? "toutes régies et tous clients confondus" : "les clients qui vous sont assignés",
-      devise: "EUR",
+      portee: (session.role === "admin" ? "toutes régies et tous clients confondus" : "les clients qui vous sont assignés") + exclusion,
+      devise: overview.currency,
       totaux: {
         spend: overview.totalSpend,
         revenue: overview.totalRevenue,
@@ -297,5 +300,23 @@ export async function basculerActivationUtilisateur(formData: FormData) {
   await prismaApp.user.update({
     where: { id: userId },
     data: { deactivatedAt: user.deactivatedAt ? null : new Date() },
+  });
+}
+
+/** Réservé aux administrateurs : pose ou met à jour le taux de change d'une
+ * devise vers le MAD (voir lib/currency.ts). */
+export async function enregistrerTauxChange(formData: FormData) {
+  const session = await getSession();
+  if (!session || session.role !== "admin") throw new Error("NOT_FOUND");
+
+  const currency = String(formData.get("currency") ?? "").trim().toUpperCase();
+  const rateToMad = Number(formData.get("rateToMad"));
+  if (!currency || currency === "MAD") throw new Error("Devise invalide.");
+  if (!Number.isFinite(rateToMad) || rateToMad <= 0) throw new Error("Le taux doit être un nombre positif.");
+
+  await prismaApp.exchangeRate.upsert({
+    where: { currency },
+    update: { rateToMad, updatedByUserId: session.userId },
+    create: { currency, rateToMad, updatedByUserId: session.userId },
   });
 }

@@ -236,3 +236,16 @@ model ImportBatch {
 
   @@index([clientId, importedAt])
 }
+
+/// Taux de change vers la devise de reporting de l'agence (MAD, voir
+/// lib/currency.ts). Réglable par un admin (/devises) — jamais un taux en
+/// dur dans le code, qui deviendrait faux au premier mouvement de marché
+/// sans que personne ne le remarque. Une devise absente d'ici n'est jamais
+/// convertie par supposition : elle est explicitement exclue des cumuls
+/// multi-devises tant qu'un admin n'a pas posé son taux.
+model ExchangeRate {
+  currency        String   @id
+  rateToMad       Decimal  @db.Decimal(10, 4)
+  updatedAt       DateTime @updatedAt
+  updatedByUserId String?
+}

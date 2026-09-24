@@ -13,7 +13,8 @@ import {
   UserCog,
   Plug,
   ShieldCheck,
-  UploadCloud
+  UploadCloud,
+  Coins
 } from "lucide-react";
 
 export function Sidebar({ role }: { role: "admin" | "member" }) {
@@ -25,6 +26,7 @@ export function Sidebar({ role }: { role: "admin" | "member" }) {
     { label: "Comptes Clients", href: "/clients", icon: Users },
     { label: "Importer des données", href: "/import", icon: UploadCloud },
     ...(role === "admin" ? [{ label: "Connecteurs", href: "/connecteurs", icon: Plug }] : []),
+    ...(role === "admin" ? [{ label: "Devises", href: "/devises", icon: Coins }] : []),
     { label: "Hub Supermetrics", href: "/supermetrics", icon: Share2 },
     { label: "Outils MCP Agent", href: "/mcp", icon: Cpu },
     { label: "Didacticiel Pas-à-Pas", href: "/onboarding", icon: Compass },

@@ -31,7 +31,7 @@ export function LookerStudioEmbed({
   reportUrl = "",
   title = "Tableau de Bord Exécutif Looker Studio",
 }: {
-  overview: { totalSpend: number; totalRevenue: number; totalConversions: number; averageRoas: number };
+  overview: { totalSpend: number; totalRevenue: number; totalConversions: number; averageRoas: number; currency: string };
   channels: CrossChannelSummary[];
   reportUrl?: string;
   title?: string;
@@ -66,7 +66,7 @@ export function LookerStudioEmbed({
   };
 
   const money = (v: number) =>
-    new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(v);
+    new Intl.NumberFormat("fr-FR", { style: "currency", currency: overview.currency, maximumFractionDigits: 0 }).format(v);
 
   return (
     <div
