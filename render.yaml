@@ -9,12 +9,18 @@ services:
     name: universal-ads-cockpit
     runtime: node
     plan: free
+    # --include=dev : sans lui, `npm ci` ignore prisma/tsx/dotenv/typescript
+    # (devDependencies) dès que NODE_ENV=production est présent — aucun
+    # d'eux n'est importé par le serveur Next.js en marche, mais tous sont
+    # nécessaires ici, à la construction (migration, rôle applicatif,
+    # amorçage admin, vérification de types).
+    #
     # Migration + pose du rôle applicatif (app_rw, moins privilégié que le
     # propriétaire) + amorçage du tout premier compte admin, dans cet ordre :
     # le rôle doit exister avant que l'appli tourne dessous, et l'admin avant
     # que quiconque puisse se connecter. Rejouable sans risque à chaque
     # déploiement (voir scripts/bootstrap-admin.ts).
-    buildCommand: npm ci && npx prisma generate && npx prisma migrate deploy && npm run db:security && npx tsx scripts/bootstrap-admin.ts && npm run build
+    buildCommand: npm ci --include=dev && npx prisma generate && npx prisma migrate deploy && npm run db:security && npx tsx scripts/bootstrap-admin.ts && npm run build
     # scripts/start.sh dérive APP_DATABASE_URL de DATABASE_URL avant de
     # lancer le serveur — même raison qu'ads-dashboard : sans lui,
     # l'application tournerait sous le rôle propriétaire de la base.
